@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.generation.gamestore.model.Produtos;
+import com.generation.gamestore.repository.CategoriaRepository;
 import com.generation.gamestore.repository.ProdutoRepository;
 
 import jakarta.validation.Valid;
@@ -32,6 +33,9 @@ public class ProdutosController {
 	
 	@Autowired
 	private ProdutoRepository produtosRepository;
+	
+	@Autowired
+	private CategoriaRepository categoriaRepository;
 	
 	@GetMapping
 	public ResponseEntity<List<Produtos>> getAll(){
@@ -52,16 +56,24 @@ public class ProdutosController {
 	
 	@PostMapping
 	public ResponseEntity<Produtos> post(@Valid @RequestBody Produtos produtos){
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(produtosRepository.save(produtos));
+		if(categoriaRepository.existsById(produtos.getCategoria().getId()))
+			return ResponseEntity.status(HttpStatus.CREATED)
+					.body(produtosRepository.save(produtos));
+		
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria não eciste!", null);
 	}
 	
 	@PutMapping
 	public ResponseEntity<Produtos> put(@Valid @RequestBody Produtos produtos){
-		return produtosRepository.findById(produtos.getId())
-				.map(resposta -> ResponseEntity.status(HttpStatus.OK)
-				.body(produtosRepository.save(produtos)))
-				.orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+		if(produtosRepository.existsById(produtos.getId())) {
+			if(categoriaRepository.existsById(produtos.getId()))
+				return ResponseEntity.status(HttpStatus.OK)
+						.body(produtosRepository.save(produtos));
+			
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria Não Existe!", null);
+		}
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 	}
 	
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -74,5 +86,6 @@ public class ProdutosController {
 		
 		produtosRepository.deleteById(id);
 	}
-
+	
+	
 }
